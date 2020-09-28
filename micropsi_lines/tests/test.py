@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import unittest
 import numpy as np
-from lines import line_draw
+from micropsi_lines import line_draw
 from PIL import Image
 
 
