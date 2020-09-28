@@ -1,7 +1,7 @@
+#!/usr/bin/env python3
 import unittest
 import numpy as np
 from lines import line_draw
-from IPython import embed
 from PIL import Image
 
 

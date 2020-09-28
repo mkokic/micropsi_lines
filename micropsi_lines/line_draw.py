@@ -1,8 +1,6 @@
-import os
+#!/usr/bin/env python3
 import numpy as np
 from PIL import Image
-from scipy.stats import linregress
-from IPython import embed
 
 
 def slope_intercept(x1, y1, x2, y2):
