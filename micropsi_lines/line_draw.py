@@ -2,7 +2,6 @@
 import numpy as np
 from PIL import Image
 import os
-from IPython import embed
 
 
 def line_params(x1, y1, x2, y2):
