@@ -1,81 +1,85 @@
 #!/usr/bin/env python3
 import unittest
 import numpy as np
-from micropsi_lines import line_draw
+from micropsi_lines.line_draw import LineDraw
 from PIL import Image
-
-
-def slope_inercept(xs, ys):
-    xs_centered = [x - np.mean(xs) for x in xs]
-    ys_centered = [y - np.mean(ys) for y in ys]
-    b1_num = sum([x * y for x, y in zip(xs_centered, ys_centered)])
-    b1_den = sum([(x - np.mean(xs)) ** 2 for x in xs])
-    b1 = b1_num / b1_den
-    b0 = np.mean(ys) - (b1 * np.mean(xs))
-    return b1, b0
+from IPython import embed
 
 
 class MyTestCase(unittest.TestCase):
-    ld = line_draw.LineDraw()
-    im = ld.img
-    line_r2g = ld.line_r2g
-    line_g2b = ld.line_g2b
-    pix_coords = ld.pix_coords
-    im_out = ld.img_out
 
-    def test_in_image(self):
-        self.assertEqual(self.im.mode, "RGB")
-        self.assertEqual(self.im.size, (64, 64))
+    def setUp(self):
+        self.ld = LineDraw()
 
-    def test_pixels(self):
-        self.assertIs(self.pix_coords.dtype, np.dtype('int64'))
-        self.assertIsInstance(self.pix_coords, np.ndarray)
-        self.assertEqual(self.pix_coords.shape, (3, 2))
-        self.assertGreaterEqual(self.pix_coords.all(), 0)
-        self.assertLess(self.pix_coords.all(), 64)
+    def tearDown(self):
+        pass
 
-    def test_image_pix(self):
-        im_expected = Image.new("RGB", (64, 64))
-        im_expected.putpixel((self.pix_coords[0, 1], self.pix_coords[0, 0]), (255, 0, 0))
-        im_expected.putpixel((self.pix_coords[1, 1], self.pix_coords[1, 0]), (0, 255, 0))
-        im_expected.putpixel((self.pix_coords[2, 1], self.pix_coords[2, 0]), (0, 0, 255))
-        self.assertEqual(im_expected, self.im)
+    def test_img_in(self):
+        self.assertEqual(self.ld.img.mode, "RGB")
+        self.assertEqual(self.ld.img.size, (64, 64))
+
+    def test_pix(self):
+        self.assertIs(self.ld.pix_coords.dtype, np.dtype('int64'))
+        self.assertIsInstance(self.ld.pix_coords, np.ndarray)
+        self.assertEqual(np.unique(self.ld.pix_coords, axis=0).shape, (3, 2))
+        self.assertTrue(0 <= self.ld.pix_coords.all() < 64)
+
+    def test_get_pix(self):
+        img_exp = Image.new("RGB", (64, 64))
+        img_exp.putpixel((10, 10), (255, 0, 0))
+        img_exp.putpixel((30, 30), (0, 255, 0))
+        img_exp.putpixel((50, 50), (0, 0, 255))
+
+        pix_coords_actual = self.ld.get_pix(img_exp)
+        img_actual = Image.new("RGB", (64, 64))
+        rgb_vals = (np.eye(3) * 255).astype(np.int64)
+        for p, c in zip(pix_coords_actual, rgb_vals):
+            img_actual.putpixel(tuple(p), tuple(c))
+        self.assertEqual(img_actual, img_exp)
 
     def test_lines(self):
-        # Test that lines are int and array
-        self.assertIs(self.line_r2g.dtype, np.dtype('int64'))
-        self.assertIs(self.line_g2b.dtype, np.dtype('int64'))
-        self.assertIsInstance(self.line_r2g, np.ndarray)
-        self.assertIsInstance(self.line_g2b, np.ndarray)
+        self.assertIs(self.ld.lines.dtype, np.dtype('int64'))
+        self.assertIsInstance(self.ld.lines, np.ndarray)
 
-        # Test lines shape
-        self.assertEqual(self.line_r2g.shape, (2, abs(self.pix_coords[0, 0] - self.pix_coords[1, 0]) + 1))
-        self.assertEqual(self.line_g2b.shape, (2, abs(self.pix_coords[1, 0] - self.pix_coords[2, 0]) + 1))
+    def test_compute_lines(self):
+        # Test vertical case
+        pix_coords_exp_vert = np.array([[10, 10],
+                                        [10, 30],
+                                        [10, 50]])
+        lines_exp_vert = np.concatenate([np.array([10 * np.ones(21, ), np.linspace(10, 30, 21)]).astype(np.int64),
+                                         np.array([10 * np.ones(21, ), np.linspace(30, 50, 21)]).astype(np.int64),
+                                         np.array([10 * np.ones(41, ), np.linspace(10, 50, 41)]).astype(np.int64)], 1)
 
-        # Test slope and intercept
-        # Line r2g
-        slope_r2g_expected = self.ld.slope_r2g
-        intercept_r2g_expected = self.ld.intercept_r2g
-        slope_r2g_actual, intercep_r2g_actual = slope_inercept(self.line_r2g[0, :], self.line_r2g[1, :])
-        self.assertAlmostEqual(slope_r2g_actual, slope_r2g_expected, -1)
-        self.assertAlmostEqual(intercep_r2g_actual, intercept_r2g_expected, -1)
-        # Line g2b
-        slope_g2b_expected = self.ld.slope_g2b
-        intercept_g2b_expected = self.ld.intercept_g2b
-        slope_g2b_actual, intercep_g2b_actual = slope_inercept(self.line_g2b[0, :], self.line_g2b[1, :])
-        self.assertAlmostEqual(slope_g2b_actual, slope_g2b_expected, -1)
-        self.assertAlmostEqual(intercep_g2b_actual, intercept_g2b_expected, -1)
+        lines_actual_vert = self.ld.compute_lines(pix_coords_exp_vert)
+        self.assertEqual(lines_actual_vert.tolist(), lines_exp_vert.tolist())
 
-    def test_out_image(self):
-        self.assertEqual(self.im_out.mode, "RGB")
-        self.assertEqual(self.im_out.size, (64, 64))
+        # Test all the other cases
+        pix_coords_exp = np.array([[10, 10],
+                                   [30, 10],
+                                   [50, 10]])
+        lines_exp = np.concatenate([np.array([np.linspace(10, 30, 21), 10 * np.ones(21, )]).astype(np.int64),
+                                    np.array([np.linspace(30, 50, 21), 10 * np.ones(21, )]).astype(np.int64),
+                                    np.array([np.linspace(10, 50, 41), 10 * np.ones(41, )]).astype(np.int64)], 1)
 
-        im_expected = Image.new("RGB", (64, 64))
-        im_expected_arr = np.array(im_expected)
-        im_expected_arr[self.line_r2g[0], self.line_r2g[1], :] = [255, 255, 255]
-        im_expected_arr[self.line_g2b[0], self.line_g2b[1], :] = [255, 255, 255]
-        im_expected = Image.fromarray(im_expected_arr, 'RGB')
-        self.assertEqual(self.im_out, im_expected)
+        lines_actual = self.ld.compute_lines(pix_coords_exp)
+        self.assertEqual(lines_actual.tolist(), lines_exp.tolist())
+
+    def test_img_out_lines(self):
+        img_out = self.ld.draw_lines(self.ld.img, self.ld.lines)
+        self.assertEqual(img_out.mode, "RGB")
+        self.assertEqual(img_out.size, (64, 64))
+
+    def test_img_out(self):
+        img_expected = Image.new("RGB", (64, 64))
+        lines_expected = np.hstack([np.array([np.linspace(10, 20, 11), 10 * np.ones(11, )]).astype(np.int64),
+                                    np.array([np.linspace(20, 30, 11), 10 * np.ones(11, )]).astype(np.int64)])
+
+        img_actual = self.ld.draw_lines(img_expected, lines_expected)
+
+        img_expected_arr = np.array(img_expected)
+        img_expected_arr[lines_expected[0], lines_expected[1], :] = [255, 255, 255]
+        img_expected = Image.fromarray(img_expected_arr, 'RGB')
+        self.assertEqual(img_actual, img_expected)
 
 
 if __name__ == '__main__':
