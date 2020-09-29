@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 from PIL import Image
-from IPython import embed
+import os
 
 
 def line_params(x1, y1, x2, y2):
@@ -19,7 +19,7 @@ def line_params(x1, y1, x2, y2):
 
 class LineDraw(object):
     def __init__(self):
-        self.path = '../data/'
+        self.path = os.path.dirname(__file__) + '/data/'
         self.img = Image.open(self.path + 'mpsi_task.png').convert("RGB")
         self.pix_coords = self.get_pix(self.img)
         self.lines = self.compute_lines(self.pix_coords)
